@@ -1,25 +1,13 @@
+# Railway service configuration
+# https://docs.railway.com/reference/config-as-code
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "./start.sh"
-healthcheckPath = "/health"
-healthcheckTimeout = 30
+# /api/status is the dashboard's public readiness endpoint.
+healthcheckPath = "/api/status"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[deploy.env]
-PORT = "8080"
-ADMIN_USERNAME = "admin"
-HERMES_HOME = "/data/.hermes"
-HOME = "/data"
-MESSAGING_CWD = "/data/workspace"
-HERMES_TERMINAL_BACKEND = "docker"
-HERMES_TERMINAL_TIMEOUT = "180"
-HERMES_TERMINAL_CWD = "/data/workspace"
-HERMES_MODEL = "anthropic/claude-opus-4.6"
-HERMES_MAX_TOKENS = "8192"
-HERMES_TEMPERATURE = "0.7"
-HERMES_MAX_ITERATIONS = "50"
-HERMES_GATEWAY_ALLOW_ALL = "false"

@@ -1,306 +1,148 @@
 # Hermes Agent Railway Template
 
-One-click deploy [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway](https://railway.app) with a web-based config UI, status dashboard, and full messaging platform support.
+One-click deploy of [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway](https://railway.app), using the official `nousresearch/hermes-agent` Docker image with the built-in web dashboard enabled.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/template/YOUR_TEMPLATE_ID)
 
 ## What You Get
 
-- **Web Config UI** — Configure providers, platforms, and agent settings from your browser
-- **Status Dashboard** — Monitor gateway state, platform connections, and live logs
-- **Gateway Management** — Start, stop, and restart the Hermes gateway from the UI
-- **Docker Terminal Backend** — Run commands in isolated Docker containers (with local fallback)
-- **Multi-Platform Support** — Telegram, Discord, Slack, and WhatsApp from one deployment
-- **Persistent Storage** — Config, skills, memory, and data survive container restarts (10GB recommended)
-- **Basic Auth** — Password-protected admin panel
-- **Auto-Initialization** — First-boot setup with environment variable seeding
+- **Official image** — the template runs `nousresearch/hermes-agent` (pinned tag), so the gateway, dashboard, and CLI are exactly what Nous Research ships. No source builds.
+- **Built-in web dashboard** — configure API keys and channels, edit `config.yaml`, browse sessions and logs, manage cron jobs, and chat with the agent in the browser.
+- **Supervised gateway** — Telegram, Discord, Slack, WhatsApp and more, auto-restarted by s6-overlay if it crashes.
+- **Persistent storage** — all agent state (config, keys, skills, memory, sessions) on a Railway volume.
+- **Secure by default** — dashboard authentication is enforced on public URLs; it fails closed without credentials.
 
 ## Quick Start
 
 ### 1. Deploy to Railway
 
-Click the "Deploy on Railway" button above.
+Click the deploy button above (or in Railway: **New Project → Deploy from GitHub repo**, selecting this repository).
 
-### 2. Configure Environment Variables
+### 2. Configure environment variables
 
-During deployment, set at least:
+In your Railway service, set:
 
-**Required: LLM Provider** (choose one)
-- `HERMES_OPENROUTER_API_KEY` — Recommended (access to 200+ models)
-- `HERMES_ANTHROPIC_API_KEY` — Claude models
-- `HERMES_OPENAI_API_KEY` — GPT models
-- `HERMES_GLM_API_KEY` — Zhipu GLM (z.ai)
-- `HERMES_KIMI_API_KEY` — Moonshot/Kimi coding models
+**Dashboard login (recommended)**
+- `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` — if unset, a strong password is auto-generated and printed once in the deploy logs.
 
-**Required: Messaging Platform** (choose at least one)
-- `HERMES_TELEGRAM_TOKEN` + `HERMES_TELEGRAM_ALLOWED_USERS`
-- `HERMES_DISCORD_TOKEN` + `HERMES_DISCORD_ALLOWED_USERS`
-- `HERMES_SLACK_BOT_TOKEN` + `HERMES_SLACK_APP_TOKEN` + `HERMES_SLACK_ALLOWED_USERS`
+**LLM provider (at least one)**
+- `OPENROUTER_API_KEY` — recommended (200+ models)
+- `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `GLM_API_KEY` / `KIMI_API_KEY` / `MINIMAX_API_KEY` / `DEEPSEEK_API_KEY`
 
-**Security**
-- `ADMIN_PASSWORD` — Web UI password (auto-generated if not set)
+**Messaging platform (at least one)**
+- `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ALLOWED_USERS` (get a token from [@BotFather](https://t.me/botfather), your user ID from [@userinfobot](https://t.me/userinfobot))
+- `DISCORD_BOT_TOKEN` + `DISCORD_ALLOWED_USERS` (enable "Message Content Intent")
+- `SLACK_BOT_TOKEN` + `SLACK_APP_TOKEN` + `SLACK_ALLOWED_USERS` (Socket Mode)
+- `WHATSAPP_ENABLED=true`
 
-### 3. Attach Volume
+You can skip the provider/platform variables and add everything later from the dashboard's **API Keys** and **Channels** pages — the container starts either way and tells you what's missing in the logs.
 
-In Railway, attach a volume mounted at `/data` (recommend 10GB).
+### 3. Attach a volume
 
-### 4. Access Dashboard
+Attach a Railway volume mounted at **`/opt/data`** (this is Hermes' home: `.env`, `config.yaml`, `sessions/`, `memories/`, `skills/`). 10 GB is plenty.
 
-Once deployed:
-1. Open your Railway service URL
-2. Log in with `admin` / your `ADMIN_PASSWORD`
-3. View the dashboard — gateway auto-starts if configured
-4. Test your bot on the configured platform(s)
+### 4. Open the dashboard
 
-### 5. Secure Your Deployment
+1. Open your Railway service URL.
+2. Log in with the dashboard credentials (from your variable, or the generated password in the deploy logs).
+3. The gateway starts automatically as a supervised service. Configure channels or grab logs from the same UI.
 
-Once confirmed working, remove the public endpoint from your Railway service and access only via Railway's internal networking or VPN.
+### Resource sizing
+
+The image is ~1 GB and runs the gateway plus dashboard. Give the service **at least 2 GB of RAM** (4 GB recommended if you'll use browser tools).
 
 ## Architecture
 
 ```
-Railway Container
-├── Web Server (Starlette + Uvicorn)
-│   ├── / — Dashboard with config editor, status, logs
-│   ├── /health — Health check endpoint
-│   └── /api/* — REST API for management
-├── Hermes Gateway (subprocess)
-│   └── Handles Telegram/Discord/Slack/WhatsApp
-└── Docker Engine (optional)
-    └── User commands run in isolated containers
+Railway service (official nousresearch/hermes-agent image)
+├── s6-overlay (PID 1 supervision)
+│   ├── hermes gateway  — Telegram / Discord / Slack / WhatsApp adapters
+│   └── web dashboard   — config, API keys, sessions, logs, cron, chat
+└── Volume at /opt/data — .env, config.yaml, SOUL.md, sessions, memories, skills
 
-Persistent Volume: /data (10GB recommended)
-├── /data/.hermes/ — Hermes config, skills, memory
-└── /data/workspace/ — Working directory for terminal
+Template additions (this repo):
+├── Dockerfile      — FROM nousresearch/hermes-agent:<pinned tag>, enables dashboard
+├── start.sh        — Railway env priming (PORT, dashboard auth), then hands off
+└── railway.toml    — health check on /api/status
 ```
 
 ## Environment Variables
 
-### Web UI
+Hermes reads variables directly from the process environment and from `/opt/data/.env` (manageable via the dashboard's **API Keys** page). This template uses upstream's variable names unchanged — see the [official env reference](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) for the full list, and [.env.example](./.env.example) for the common ones.
+
+### Template-managed
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8080` | Web server port |
-| `ADMIN_USERNAME` | `admin` | Basic auth username |
-| `ADMIN_PASSWORD` | *(random)* | Basic auth password (printed to logs if not set) |
+| `PORT` | *(set by Railway)* | Forwarded to `HERMES_DASHBOARD_PORT` so the dashboard listens on the public domain |
+| `HERMES_DASHBOARD` | `1` | Enables the supervised dashboard service |
+| `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` | `admin` | Dashboard login username |
+| `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` | *(generated)* | Dashboard login password (printed to deploy logs once if unset) |
+| `HERMES_DASHBOARD_BASIC_AUTH_SECRET` | *(generated, persisted to volume)* | Session signing secret; keeps logins stable across restarts |
 
-### LLM Providers (at least one required)
-
-| Variable | Description |
-|----------|-------------|
-| `HERMES_OPENROUTER_API_KEY` | [OpenRouter](https://openrouter.ai/keys) — Recommended (200+ models) |
-| `HERMES_ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com/) — Claude models |
-| `HERMES_OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) — GPT models |
-| `HERMES_GLM_API_KEY` | [Zhipu AI](https://z.ai) / [Open BigModel](https://open.bigmodel.cn) — GLM-4/GLM-5 |
-| `HERMES_KIMI_API_KEY` | [Kimi Code](https://platform.kimi.ai) / [Moonshot](https://platform.moonshot.cn) — Kimi K2.5 |
-| `HERMES_MINIMAX_API_KEY` | [MiniMax](https://www.minimax.io) — MiniMax models |
-| `HERMES_NOUS_PORTAL_KEY` | [Nous Portal](https://portal.nousresearch.com) — Hermes-optimized models |
-
-**Provider Selection:**
-- Set `HERMES_PROVIDER` to force a specific provider (e.g., `openrouter`, `anthropic`, `glm`)
-- If multiple keys are set, auto-selection picks based on model preference
-
-### Agent Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HERMES_MODEL` | `anthropic/claude-opus-4.6` | Default LLM model |
-| `HERMES_MAX_TOKENS` | `8192` | Max tokens per response |
-| `HERMES_TEMPERATURE` | `0.7` | Sampling temperature (0-2) |
-| `HERMES_MAX_ITERATIONS` | `50` | Max tool iterations per request |
-
-### Messaging Platforms (at least one required)
-
-#### Telegram
+### Commonly used upstream variables
 
 | Variable | Description |
 |----------|-------------|
-| `HERMES_TELEGRAM_TOKEN` | Bot token from [@BotFather](https://t.me/botfather) |
-| `HERMES_TELEGRAM_ALLOWED_USERS` | Comma-separated Telegram user IDs |
-| `HERMES_TELEGRAM_HOME_CHANNEL` | Channel/group ID for bot responses |
+| `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GLM_API_KEY`, `KIMI_API_KEY`, `MINIMAX_API_KEY`, `DEEPSEEK_API_KEY` | LLM provider keys (at least one) |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USERS`, `TELEGRAM_HOME_CHANNEL` | Telegram |
+| `DISCORD_BOT_TOKEN`, `DISCORD_ALLOWED_USERS`, `DISCORD_HOME_CHANNEL` | Discord |
+| `SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `SLACK_ALLOWED_USERS` | Slack (Socket Mode) |
+| `WHATSAPP_ENABLED`, `WHATSAPP_ALLOWED_USERS` | WhatsApp bridge |
+| `API_SERVER_ENABLED`, `API_SERVER_HOST`, `API_SERVER_KEY` | Optional OpenAI-compatible API server (port 8642) |
 
-Get your Telegram user ID: [@userinfobot](https://t.me/userinfobot)
+**Security:** always set `*_ALLOWED_USERS` for any messaging platform. Do not use the `*_ALLOW_ALL_*` variables on a public deployment.
 
-#### Discord
+## Security Notes
 
-| Variable | Description |
-|----------|-------------|
-| `HERMES_DISCORD_TOKEN` | Bot token from [Discord Developer Portal](https://discord.com/developers/applications) |
-| `HERMES_DISCORD_ALLOWED_USERS` | Comma-separated Discord user IDs |
-| `HERMES_DISCORD_HOME_CHANNEL` | Channel ID for bot responses |
-
-Enable "Message Content Intent" in your Discord bot settings.
-
-#### Slack
-
-| Variable | Description |
-|----------|-------------|
-| `HERMES_SLACK_BOT_TOKEN` | Bot token (`xoxb-...`) from OAuth & Permissions |
-| `HERMES_SLACK_APP_TOKEN` | App-level token (`xapp-...`) for Socket Mode |
-| `HERMES_SLACK_ALLOWED_USERS` | Comma-separated Slack user IDs (e.g., `U01234ABCDE`) |
-| `HERMES_SLACK_HOME_CHANNEL` | Channel ID for bot responses |
-
-Enable Socket Mode in your Slack app settings.
-
-#### WhatsApp
-
-| Variable | Description |
-|----------|-------------|
-| `HERMES_WHATSAPP_ENABLED` | Set to `true` to enable |
-| `HERMES_WHATSAPP_ALLOWED_USERS` | Comma-separated phone numbers (e.g., `15551234567`) |
-
-**Note:** First-time WhatsApp setup requires pairing via QR code. SSH into the container and run `hermes whatsapp` to pair.
-
-### Tool API Keys (Optional)
-
-| Variable | Description |
-|----------|-------------|
-| `HERMES_BROWSERBASE_API_KEY` | [Browserbase](https://browserbase.com) for web automation |
-| `HERMES_BROWSERBASE_PROJECT_ID` | Browserbase project ID |
-| `HERMES_PARALLEL_API_KEY` | [Parallel](https://parallel.ai) for AI-native web search |
-| `HERMES_FIRECRAWL_API_KEY` | [Firecrawl](https://firecrawl.dev) for web extraction |
-| `HERMES_FAL_KEY` | [FAL.ai](https://fal.ai) for image generation |
-| `HERMES_VOICE_OPENAI_KEY` | [OpenAI](https://platform.openai.com/api-keys) for voice/TTS |
-| `HERMES_ELEVENLABS_KEY` | [ElevenLabs](https://elevenlabs.io) for premium TTS |
-
-### Terminal Backend
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HERMES_TERMINAL_BACKEND` | `docker` | Backend: `docker`, `local`, `ssh`, `modal` |
-| `HERMES_TERMINAL_TIMEOUT` | `180` | Command timeout in seconds |
-| `HERMES_TERMINAL_CWD` | `/data/workspace` | Working directory |
-
-**Backends:**
-- `docker` — Run commands in isolated containers (recommended, requires volume)
-- `local` — Run directly in container (fallback if Docker unavailable)
-- `modal` — Serverless containers via [Modal](https://modal.com)
-- `ssh` — Run on remote server
-
-### Security
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `HERMES_GATEWAY_ALLOW_ALL` | `false` | Allow all users (⚠️ not recommended) |
-| `HERMES_TELEGRAM_ALLOW_ALL` | `false` | Allow all Telegram users |
-| `HERMES_DISCORD_ALLOW_ALL` | `false` | Allow all Discord users |
-| `HERMES_SLACK_ALLOW_ALL` | `false` | Allow all Slack users |
-
-**Strongly recommended:** Always use `*_ALLOWED_USERS` instead of allowing all users.
-
-## API Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/` | Yes | Main dashboard |
-| `GET` | `/health` | No | Health check |
-| `GET` | `/api/config` | Yes | Get Hermes configuration |
-| `PUT` | `/api/config` | Yes | Update Hermes configuration |
-| `GET` | `/api/status` | Yes | Gateway status, platform connections |
-| `GET` | `/api/logs` | Yes | Recent gateway logs (last 100 lines) |
-| `POST` | `/api/gateway/start` | Yes | Start Hermes gateway |
-| `POST` | `/api/gateway/stop` | Yes | Stop Hermes gateway |
-| `POST` | `/api/gateway/restart` | Yes | Restart Hermes gateway |
+- The dashboard **requires authentication on any public bind** and refuses to start unauthenticated on one — this is upstream's fail-closed policy. Set `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` (or the generated one in your logs) to log in.
+- Anyone with the dashboard URL plus your credentials can run the agent, edit config, and read sessions. Keep the password strong. For production, consider locking the service to internal networking or an OAuth provider (`HERMES_DASHBOARD_OAUTH_CLIENT_ID`).
+- The agent executes terminal commands **inside the container** (local terminal backend). Treat dashboard credentials as shell access to your Railway service.
+- All secrets live in the volume's `.env` and Railway's encrypted variables — never commit them.
 
 ## Local Development
-
-### Build and run locally:
 
 ```bash
 docker build -t hermes-railway .
 docker run --rm -it \
   -p 8080:8080 \
   -e PORT=8080 \
-  -e ADMIN_PASSWORD=changeme \
-  -e HERMES_OPENROUTER_API_KEY=sk-or-xxx \
-  -e HERMES_TELEGRAM_TOKEN=123456:ABC \
-  -e HERMES_TELEGRAM_ALLOWED_USERS=123456789 \
-  -v $(pwd)/.tmpdata:/data \
+  -e HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=changeme \
+  -e OPENROUTER_API_KEY=sk-or-xxx \
+  -e TELEGRAM_BOT_TOKEN=123456:ABC \
+  -e TELEGRAM_ALLOWED_USERS=123456789 \
+  -v $(pwd)/.tmpdata:/opt/data \
   hermes-railway
 ```
 
-Access at `http://localhost:8080`
-
-### SSH into Railway container:
+Open `http://localhost:8080`. CLI access inside the running container:
 
 ```bash
-railway ssh
-# Then run Hermes CLI commands:
-hermes status
-hermes config
-hermes pairing list
-hermes whatsapp  # For WhatsApp QR pairing
+docker exec -it <container> hermes status
 ```
-
-## Supported Models
-
-Hermes Agent works with any OpenAI-compatible API:
-
-- **Claude** (via Anthropic or OpenRouter)
-- **GPT-4/GPT-3.5** (OpenAI)
-- **GLM-4/GLM-5** (Zhipu AI / z.ai)
-- **Kimi K2.5** (Moonshot)
-- **MiniMax** (MiniMax)
-- **200+ models** (via OpenRouter)
-- **Self-hosted** (vLLM, Ollama, etc.)
-
-## Troubleshooting
-
-### Gateway won't start
-
-1. Check Railway logs for errors
-2. Verify at least one LLM provider key is set
-3. Verify at least one messaging platform token is set
-4. Check `HERMES_*_ALLOWED_USERS` is set correctly
-
-### No replies from bot
-
-1. Confirm platform token is valid
-2. Check user ID is in allowlist
-3. Verify bot has necessary permissions (Discord intents, etc.)
-4. Check gateway logs in dashboard
-
-### Terminal commands fail
-
-1. Docker backend: Ensure volume is mounted at `/data`
-2. Switch to local backend: Set `HERMES_TERMINAL_BACKEND=local`
-3. Check `HERMES_TERMINAL_TIMEOUT` isn't too low
-
-### Data lost after restart
-
-1. Ensure Railway volume is mounted at `/data`
-2. Check volume has read/write permissions
-3. Volume should be at least 10GB for long-term use
-
-### 401 Unauthorized errors
-
-1. Check API key is valid and has credits
-2. Verify `HERMES_PROVIDER` matches the key provider
-3. Some providers require base URL override
-
-## Version Information
-
-- **Hermes Agent**: `v2026.3.17` (pinned)
-- **Python**: 3.11
-- **Node.js**: 22 LTS
-- **Docker**: CE (for terminal backend)
 
 ## Updating
 
-To update to a newer Hermes version:
+The Hermes version is pinned via `ARG HERMES_VERSION` in the [Dockerfile](./Dockerfile) (`v2026.9.14` as of this template's update). To upgrade:
 
-1. Fork this repository
-2. Update `HERMES_VERSION` in `Dockerfile`
-3. Rebuild and redeploy
+1. Check the [latest release](https://github.com/NousResearch/hermes-agent/releases).
+2. Update `HERMES_VERSION` in the Dockerfile.
+3. Commit and push — Railway rebuilds and redeploys automatically when deploying from GitHub.
 
-Or use Railway's "Deploy from GitHub" to auto-deploy on push.
+Agent state lives on the volume, so upgrades keep config, sessions, and memory. (Users cannot self-upgrade the running image from the dashboard on Docker installs — upstream requires an image rebuild by design.)
+
+## Troubleshooting
+
+- **Dashboard won't load** — check that a volume is mounted at `/opt/data` and that the deploy logs don't show the auth-gate startup error (set a password provider — this template does it automatically).
+- **Gateway up but no replies** — verify the platform token, that your user ID is in `*_ALLOWED_USERS`, and provider keys exist (dashboard → API Keys).
+- **First message fails** — no LLM provider configured yet; add one via Railway variables or the API Keys page.
+- **Slow first deploy** — the image is ~1 GB; subsequent deploys reuse Railway's cache.
 
 ## Resources
 
-- [Hermes Agent Documentation](https://hermes-agent.nousresearch.com/docs/)
-- [Hermes GitHub](https://github.com/NousResearch/hermes-agent)
-- [Railway Documentation](https://docs.railway.com/)
-- [OpenRouter Models](https://openrouter.ai/models)
+- [Hermes Agent documentation](https://hermes-agent.nousresearch.com/docs/) — especially [Docker](https://hermes-agent.nousresearch.com/docs/user-guide/docker) and the [Web Dashboard](https://hermes-agent.nousresearch.com/docs/user-guide/features/web-dashboard)
+- [Hermes Agent GitHub](https://github.com/NousResearch/hermes-agent)
+- [Railway documentation](https://docs.railway.com/)
 
 ## License
 

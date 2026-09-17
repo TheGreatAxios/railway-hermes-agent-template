@@ -1,67 +1,31 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-.venv/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Environment files
+# Environment files (never commit real secrets)
 .env
 .env.local
 .env.*.local
+
+# Local testing data
+.tmpdata/
+data/
+.hermes/
 
 # Logs
 *.log
 logs/
 
-# Data directories (for local testing)
-.tmpdata/
-data/
-.hermes/
-
-# Railway
-.railway/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 
 # Node
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.tox/
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
 
 # Build artifacts
 *.tar.gz
