@@ -2,7 +2,7 @@
 
 One-click deploy of [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway](https://railway.app), using the official `nousresearch/hermes-agent` Docker image with the built-in web dashboard enabled.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/faithful-unity)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/hermes-agent-8)
 
 ## About Hosting
 
