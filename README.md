@@ -1,8 +1,38 @@
-# Hermes Agent Railway Template
+# Deploy and Host Hermes Agent on Railway
 
 One-click deploy of [Hermes Agent](https://github.com/NousResearch/hermes-agent) on [Railway](https://railway.app), using the official `nousresearch/hermes-agent` Docker image with the built-in web dashboard enabled.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/template/YOUR_TEMPLATE_ID)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/faithful-unity)
+
+## About Hosting
+
+Hosting Hermes Agent means running a persistent gateway process that connects your messaging platforms (Telegram, Discord, Slack, WhatsApp) to an LLM-powered agent, alongside a web dashboard for configuration and monitoring. The service runs as a single Railway container: the gateway and dashboard are supervised in-process, and all agent state (config, API keys, skills, memories, sessions) lives on a persistent volume mounted at `/opt/data`. Plan for at least 2 GB of RAM (4 GB recommended with browser tools) and ~1 GB of image storage.
+
+## Why Deploy Hermes Agent on Railway?
+
+- **Zero server maintenance** — no VPS to provision, patch, or back up. Railway handles the runtime, restarts the service on failure, and gives you logs and metrics out of the box.
+- **Always current** — the template builds from the official `nousresearch/hermes-agent` image, so you run exactly what Nous Research ships.
+- **Configurable in the browser** — add API keys, connect messaging channels, edit `config.yaml`, and chat with the agent from the built-in dashboard; no SSH required.
+- **Persistent by default** — a volume mount keeps your agent's memory, skills, and sessions across restarts and upgrades.
+
+## Common Use Cases
+
+- A personal AI assistant in Telegram, Discord, or Slack with allowlisted users
+- A persistent, self-improving agent with skills, memory, and cron-scheduled jobs
+- A team's shared agent that monitors channels and responds to prompts
+- An OpenAI-compatible agent API (optional gateway API server) for your own apps
+
+## Dependencies for Hermes Agent
+
+- **An LLM provider API key** (at least one): OpenRouter (recommended), Anthropic, OpenAI, GLM, Kimi, MiniMax, DeepSeek, and more
+- **A messaging platform token** (at least one to chat with the agent): Telegram, Discord, Slack, or WhatsApp
+- **A Railway volume** mounted at `/opt/data` for persistent state (the template creates this for you)
+
+### Deployment Dependencies
+
+- [nousresearch/hermes-agent](https://hub.docker.com/r/nousresearch/hermes-agent) — the official Hermes Agent Docker image (pinned release tag)
+- Railway volume — persistent storage for agent state
+- Railway HTTP domain — serves the dashboard with automatic TLS
 
 ## What You Get
 
