@@ -106,8 +106,9 @@ Hermes reads variables directly from the process environment and from `/opt/data
 |----------|---------|-------------|
 | `PORT` | *(set by Railway)* | Forwarded to `HERMES_DASHBOARD_PORT` so the dashboard listens on the public domain |
 | `HERMES_DASHBOARD` | `1` | Enables the supervised dashboard service |
+| `HERMES_DASHBOARD_PUBLIC_URL` | `https://$RAILWAY_PUBLIC_DOMAIN` | Public origin for Host/WebSocket Origin checks and OAuth callbacks |
 | `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` | `admin` | Dashboard login username |
-| `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` | *(generated)* | Dashboard login password (printed to deploy logs once if unset) |
+| `HERMES_DASHBOARD_BASIC_AUTH_PASSWORD` | *(generated)* | Dashboard login password (printed to deploy logs once if unset; persisted on the volume) |
 | `HERMES_DASHBOARD_BASIC_AUTH_SECRET` | *(generated, persisted to volume)* | Session signing secret; keeps logins stable across restarts |
 
 ### Commonly used upstream variables
@@ -153,7 +154,7 @@ docker exec -it <container> hermes status
 
 ## Updating
 
-The Hermes version is pinned via `ARG HERMES_VERSION` in the [Dockerfile](./Dockerfile) (`v2026.9.14` as of this template's update). To upgrade:
+The Hermes version is pinned via `ARG HERMES_VERSION` in the [Dockerfile](./Dockerfile) (`v0.23.0` as of this template's update). To upgrade:
 
 1. Check the [latest release](https://github.com/NousResearch/hermes-agent/releases).
 2. Update `HERMES_VERSION` in the Dockerfile.

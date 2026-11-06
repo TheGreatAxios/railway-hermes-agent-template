@@ -15,6 +15,12 @@ set -eu
 HERMES_DASHBOARD_PORT="${HERMES_DASHBOARD_PORT:-${PORT:-9119}}"
 export HERMES_DASHBOARD_PORT
 
+# Public origin: Host/WebSocket Origin guard and OAuth callbacks behind Railway TLS.
+if [ -z "${HERMES_DASHBOARD_PUBLIC_URL:-}" ] && [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ]; then
+    HERMES_DASHBOARD_PUBLIC_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
+    export HERMES_DASHBOARD_PUBLIC_URL
+fi
+
 # -----------------------------------------------------------------------------
 # Dashboard auth: mandatory on non-loopback binds (upstream fails closed
 # without an auth provider, by design — June 2026 hardening).
@@ -23,15 +29,23 @@ HERMES_DASHBOARD_BASIC_AUTH_USERNAME="${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:-${
 export HERMES_DASHBOARD_BASIC_AUTH_USERNAME
 
 if [ -z "${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:-}" ]; then
-    HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')"
-    echo ""
-    echo "================================================================"
-    echo "  Dashboard Username: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}"
-    echo "  Dashboard Password: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}"
-    echo "================================================================"
-    echo ""
-    echo "Auto-generated because HERMES_DASHBOARD_BASIC_AUTH_PASSWORD was not set."
-    echo "Set that variable to control the password (visible only in this log)."
+    PASSWORD_FILE="/opt/data/.dashboard_password"
+    if [ -f "${PASSWORD_FILE}" ]; then
+        HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$(cat "${PASSWORD_FILE}")"
+    else
+        HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')"
+        mkdir -p /opt/data
+        printf '%s' "${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}" > "${PASSWORD_FILE}"
+        chmod 600 "${PASSWORD_FILE}"
+        echo ""
+        echo "================================================================"
+        echo "  Dashboard Username: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME}"
+        echo "  Dashboard Password: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD}"
+        echo "================================================================"
+        echo ""
+        echo "Auto-generated because HERMES_DASHBOARD_BASIC_AUTH_PASSWORD was not set."
+        echo "Set that variable to control the password (visible only in this log)."
+    fi
 fi
 export HERMES_DASHBOARD_BASIC_AUTH_PASSWORD
 

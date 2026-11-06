@@ -4,7 +4,7 @@
 # Bump HERMES_VERSION to upgrade — see README "Updating".
 # =============================================================================
 
-ARG HERMES_VERSION=v2026.9.14
+ARG HERMES_VERSION=v0.23.0
 FROM nousresearch/hermes-agent:${HERMES_VERSION}
 
 # The base image's ENTRYPOINT is /opt/hermes/docker/entrypoint-dispatch.sh
